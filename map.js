@@ -5,13 +5,16 @@ export function mapCallback(array, asyncFn, finalCallback) {
 
   const results = [];
   let completed = 0;
+  let hasError = false; 
 
   for (let i = 0; i < array.length; i++) {
     asyncFn(array[i], i, function(err, result) {
+      if (hasError) return; 
+
       if (err) {
-        console.log("Debug: caught error");
+        hasError = true;
         finalCallback(err);
-        
+
       }
       
       results[i] = result;
@@ -22,4 +25,20 @@ export function mapCallback(array, asyncFn, finalCallback) {
       }
     });
   }
+}
+
+export function mapPromise(array, asyncFn) {
+  return new Promise(function(resolve, reject) {
+    const promises = array.map(function(item) {
+      return asyncFn(item); 
+    });
+
+    Promise.all(promises)
+      .then(function(results) {
+        resolve(results);
+      })
+      .catch(function(error) {
+        reject(error);
+      });
+  });
 }
