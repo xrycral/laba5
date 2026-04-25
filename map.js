@@ -5,16 +5,16 @@ export function mapCallback(array, asyncFn, finalCallback) {
 
   const results = [];
   let completed = 0;
-  let hasError = false; 
+  let hasError = false;
 
   for (let i = 0; i < array.length; i++) {
     asyncFn(array[i], i, function(err, result) {
-      if (hasError) return; 
+      if (hasError) return;
 
       if (err) {
         hasError = true;
         finalCallback(err);
-
+        
       }
       
       results[i] = result;
@@ -29,16 +29,44 @@ export function mapCallback(array, asyncFn, finalCallback) {
 
 export function mapPromise(array, asyncFn) {
   return new Promise(function(resolve, reject) {
-    const promises = array.map(function(item) {
-      return asyncFn(item); 
+    const promises = array.map(function(item, index) {
+      return asyncFn(item, index); 
+    });
+
+    Promise.all(promises).then(resolve).catch(reject);
+  });
+}
+
+export function mapWithAbort(array, asyncFn, signal) {
+  return new Promise(function(resolve, reject) {
+    if (signal && signal.aborted) {
+      return reject(new Error('AbortError: Aborted before start'));
+    }
+
+    function onAbort() {
+      reject(new Error('AbortError: Operation aborted by user'));
+    }
+
+    if (signal) {
+      signal.addEventListener('abort', onAbort);
+    }
+
+    const promises = array.map(function(item, index) {
+      return asyncFn(item, index, signal).then(function(result) {
+        if (signal && signal.aborted) {
+          throw new Error('AbortError: Operation was aborted');
+        }
+        return result;
+      });
     });
 
     Promise.all(promises)
       .then(function(results) {
+        if (signal) signal.removeEventListener('abort', onAbort);
         resolve(results);
       })
       .catch(function(error) {
-        reject(error);
+        if (signal) signal.removeEventListener('abort', onAbort);
       });
   });
 }
