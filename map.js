@@ -1,3 +1,10 @@
+class AbortError extends Error {
+  constructor(message = 'Operation was aborted') {
+    super(message);
+    this.name = 'AbortError';
+  }
+}
+
 export function mapCallback(array, asyncFn, finalCallback) {
   if (array.length === 0) {
     return finalCallback(null, []);
@@ -14,7 +21,7 @@ export function mapCallback(array, asyncFn, finalCallback) {
       if (err) {
         hasError = true;
         finalCallback(err);
-        
+        return;
       }
       
       results[i] = result;
@@ -40,11 +47,11 @@ export function mapPromise(array, asyncFn) {
 export function mapWithAbort(array, asyncFn, signal) {
   return new Promise(function(resolve, reject) {
     if (signal && signal.aborted) {
-      return reject(new Error('AbortError: Aborted before start'));
+      return reject(new AbortError('Aborted before start'));
     }
 
     function onAbort() {
-      reject(new Error('AbortError: Operation aborted by user'));
+      reject(new AbortError('Operation aborted by user'));
     }
 
     if (signal) {
@@ -54,7 +61,7 @@ export function mapWithAbort(array, asyncFn, signal) {
     const promises = array.map(function(item, index) {
       return asyncFn(item, index, signal).then(function(result) {
         if (signal && signal.aborted) {
-          throw new Error('AbortError: Operation was aborted');
+          throw new AbortError('Operation was aborted');
         }
         return result;
       });
@@ -67,6 +74,7 @@ export function mapWithAbort(array, asyncFn, signal) {
       })
       .catch(function(error) {
         if (signal) signal.removeEventListener('abort', onAbort);
+        reject(error);
       });
   });
 }
