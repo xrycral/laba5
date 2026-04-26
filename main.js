@@ -67,7 +67,7 @@ async function runAbortDemo() {
     );
     console.log('Abort result:', results);
   } catch (err) {
-    console.log('Abort triggered:', err.massage); 
+    console.log('Abort triggered:', err.message); 
   }
 }
 
